@@ -1,4 +1,4 @@
-// Next.js API route support: https://nextjs.org/docs/api-routes/introduction
+// /Users/emil/playground/markdowndown/src/pages/api/tomd.js
 
 import fetchCleanMarkdownFromUrl from "./_scrapper";
 import path from "path";
@@ -7,8 +7,7 @@ import fs from "fs";
 import archiver from "archiver";
 
 export default async function handler(req, res) {
-  // get params from body
-  let {
+  const {
     url,
     downloadImages,
     imagesDir,
@@ -16,84 +15,59 @@ export default async function handler(req, res) {
     removeNonContent,
     applyGpt,
     bigModel,
-    geminiRawHtmlMode
-  } = req.body;
-  // let { url, downloadImages, imagesDir, imagesBasePathOverride, removeNonContent } = req.query;
+    rawHtmlMode,      // single checkbox
+    rawHtmlModel      // "gemini" or "o3-mini"
+  } = req.body || {};
+
   if (!url) {
-    res.status(400).send("Missing url parameter");
+    return res.status(400).send("Missing url parameter");
   }
 
-  if (!/^https?:\/\//i.test(url)) {
-      url = 'http://' + url;
-  }
-  
-  // normalize
-  // url = new URL(url).toString();
-  console.log(`Fetching ${url}`);
-  // random tmp folder in tmp directory
+  // Create a temp folder
   const folder = path.join(os.tmpdir(), Math.random().toString(36).substring(7));
-  // create dir if no exist
+  fs.mkdirSync(folder, { recursive: true });
+
   try {
-    fs.mkdirSync(folder);
-  }
-  catch(e){
-    console.log(e)
-  }
-  console.log("f", folder)
-  const md = await fetchCleanMarkdownFromUrl(
-    url,
-    `${folder}/index.md`,
-    downloadImages === true,
-    imagesDir || "images",
-    imagesBasePathOverride,
-    removeNonContent === true,
-    applyGpt,
-    bigModel === true,
-    geminiRawHtmlMode === true
-  );
-  if (downloadImages === true){
-    // Set the headers to indicate a file download
-  res.setHeader('Content-Type', 'application/zip');
-  res.setHeader('Content-Disposition', 'attachment; filename=markdd.zip');
+    const md = await fetchCleanMarkdownFromUrl(
+      url,
+      path.join(folder, "index.md"),
+      !!downloadImages,
+      imagesDir || "images",
+      imagesBasePathOverride || "",
+      !!removeNonContent,
+      applyGpt || "",
+      !!bigModel,
+      !!rawHtmlMode,
+      rawHtmlModel || "gemini"
+    );
 
-    // Create a zip archive using archiver
-    const archive = archiver('zip', {
-      zlib: { level: 9 } // Compression level
-    });
-
-     // Catch warnings and errors
-  archive.on('warning', (err) => {
-    if (err.code === 'ENOENT') {
-      console.warn(err);
+    // If user wants a zip w/ images
+    if (downloadImages) {
+      res.setHeader('Content-Type', 'application/zip');
+      res.setHeader('Content-Disposition', 'attachment; filename=markdd.zip');
+      const archive = archiver('zip', { zlib: { level: 9 } });
+      archive.on('warning', (err) => {
+        if (err.code === 'ENOENT') console.warn(err);
+        else throw err;
+      });
+      archive.on('error', (err) => { throw err; });
+      archive.pipe(res);
+      archive.directory(folder, false);
+      await archive.finalize();
     } else {
-      throw err;
+      // Just send the text
+      res.setHeader("Content-Type", "text/plain");
+      res.send(md);
     }
-  });
-  archive.on('error', (err) => {
-    throw err;
-  });
-    // Pipe the archive to the response
-    archive.pipe(res);
-    archive.directory(folder, false);
-
-    archive.finalize();
-
-    // archive.on('end', () => res.end());
-
-
-  }
-  else{
-    res.setHeader("Content-Type", "text/plain");
-    res.send(md);
+  } catch (err) {
+    console.error("Conversion error:", err?.message);
+    res.status(500).send(err?.message || "Unknown conversion error");
   }
 }
 
-// This function can run for a maximum of 30 seconds
 export const config = {
-  maxDuration: 30,
   api: {
-    bodyParser: {
-      sizeLimit: '1mb',
-    },
+    bodyParser: { sizeLimit: '1mb' },
   },
+  maxDuration: 30,
 };

@@ -1,0 +1,3 @@
+- when starting containers, name the docker container 'markdowndown' and tag builds with 'markdowndown:latest'
+- always start detached
+- please rebuild automatically after making changes, and stop the existing one, and start the new one with the new image.
