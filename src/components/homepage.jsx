@@ -47,6 +47,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { SegmentToggle } from "@/components/ui/segment-toggle"
 
 function getLastPartOfUrl(url){
   // remove params and hash and trailing slash
@@ -84,6 +85,8 @@ export function Homepage() {
   const [gptEnabled, setGptEnabled] = useState(false);
   const [applyGpt, setApplyGpt] = useState("");
   const [bigModel, setBigModel] = useState(false);
+  const [mode, setMode] = useState("file");
+  const [downloadFilePath, setDownloadFilePath] = useState("downloads");
 
   const [md, setMd] = useState("");
 
@@ -96,7 +99,9 @@ export function Homepage() {
       removeNonContent,
       applyGpt,
       bigModel,
-      geminiRawHtmlMode
+      geminiRawHtmlMode,
+      mode,
+      downloadFilePath
     }
     localStorage.setItem("settings", JSON.stringify(settings))
   }
@@ -115,11 +120,28 @@ export function Homepage() {
       setDownloadImages(!!parsed.downloadImages)
       SetImagesBasePathOverride(parsed.imagesBasePathOverride)
       setGeminiRawHtmlMode(!!parsed.geminiRawHtmlMode)
+      setMode(parsed.mode || "file")
+      setDownloadFilePath(parsed.downloadFilePath || "downloads")
     }
   }, [])
 
+  async function copyToClipboard(text) {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast({
+        title: "Copied to clipboard",
+        description: "The markdown has been placed on your clipboard."
+      })
+    } catch (error) {
+      toast({
+        title: "Copy to clipboard failed",
+        description: "Please try again or use a modern browser."
+      })
+    }
+  }
+
   async function submit(e){
-    e.preventDefault()
+    e?.preventDefault?.()
     if (isLoading){
       return;
     }
@@ -129,7 +151,14 @@ export function Homepage() {
         description: "Please enter a valid URL",
       })
     }
-    // const fullUrl = `/api/tomd?url=${url}&downloadImages=${downloadImages}&imagesDir=${imagesDir}&imagesBasePathOverride=${imagesBasePathOverride}&removeNonContent=${removeNonContent}`
+
+    if (mode === "clipboard" && downloadImages) {
+      return toast({
+        title: "Clipboard mode not possible with downloaded images",
+        description: "Disable 'Download images locally' or switch to 'File' mode."
+      })
+    }
+
     const payload = {
       url,
       downloadImages,
@@ -144,53 +173,64 @@ export function Homepage() {
     track("Convert Clicked", payload)
 
     setIsLoading(true)
-    const resp = await fetch("/api/tomd", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(payload)
-    });
-    // const resp = await fetch(fullUrl)
-    if (!resp.ok){
-      toast({
-        title: "Failed to Convert",
-        description: "Either the URL is invalid or the server is too busy. Please try again later.",
-      })
-      track("Download Failed", payload)
-    }
-    if (resp.ok && !downloadImages){
-      const md = await resp.text();
-      toast({
-        title: "Converted Successfully",
-        description: "Your markdown is being downloaded as a text file.",
-      })
-      const a = document.createElement('a');
-      a.href = `data:text/plain;charset=utf-8,${encodeURIComponent(md)}`;
-      a.download = `${getLastPartOfUrl(url)}.md` || "markdd.md";
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      track("Downloaded Markdown", {withImages: false})
+    try {
+      const resp = await fetch("/api/tomd", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload)
+      });
 
-    } 
-    else if (resp.ok && downloadImages){
-      const blob = await resp.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `${getLastPartOfUrl(url)}.zip` || "markdd.zip";
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      toast({
-        title: "Download Started",
-        description: "Your markdown and images are being downloaded as a zip file",
-      })
-      track("Downloaded Markdown", {withImages: true})
+      if (!resp.ok){
+        toast({
+          title: "Failed to Convert",
+          description: "Either the URL is invalid or the server is too busy. Please try again later.",
+        })
+        track("Download Failed", payload)
+      } else {
+        if (downloadImages) {
+          const blob = await resp.blob();
+          const tempUrl = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = tempUrl;
+          a.download = `${getLastPartOfUrl(url)}.zip` || "markdowndown.zip";
+          document.body.appendChild(a);
+          a.click();
+          window.URL.revokeObjectURL(tempUrl);
+          toast({
+            title: "Download Started",
+            description: `Your markdown + images have started downloading.\n${downloadFilePath}`
+          })
+          track("Downloaded Markdown", {withImages: true})
+        }
+        else {
+          const md = await resp.text();
+          if (mode === "file") {
+            toast({
+              title: "Converted Successfully",
+              description: `Your markdown is being downloaded.\n${downloadFilePath}`
+            })
+            const a = document.createElement('a');
+            a.href = `data:text/plain;charset=utf-8,${encodeURIComponent(md)}`;
+            a.download = `${getLastPartOfUrl(url)}.md` || "markdowndown.md";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            track("Downloaded Markdown", {withImages: false})
+          } else {
+            await copyToClipboard(md);
+            track("Copied to Clipboard", payload)
+          }
+        }
+      }
+    } catch (error) {
+      console.error(error)
+      toast({ title: "Error", description: error?.message || "Unknown error" })
+    } finally {
+      saveSettingsToLocalStorage()
+      setIsLoading(false)
     }
-    saveSettingsToLocalStorage()
-    setIsLoading(false)
   }
   return (
     (<main className="w-full min-h-[100vh] py-6 space-y-6 flex justify-center items-center">
@@ -203,16 +243,44 @@ export function Homepage() {
             Convert any webpage to a clean markdown<br/> w/ images downloaded.
           </p>
         </div>
-        <div className="w-full max-w-sm space-y-2">
-          <div className="flex w-full max-w-sm items-center space-x-2 mb-10">
-            <Input value={url} type="text" placeholder="URL" onChange={val=>setUrl(val.target.value)} onKeyDown={(e)=>{
-              if (e.key === "Enter"){
-                submit()
-              }
-            }} />
+        <div className="w-full max-w-sm space-y-4">
+          <div className="flex w-full max-w-sm items-center space-x-2">
+            <Input
+              value={url}
+              type="text"
+              placeholder="URL"
+              onChange={(val)=>setUrl(val.target.value)}
+              onKeyDown={(e)=>{
+                if (e.key === "Enter"){
+                  submit()
+                }
+              }}
+            />
             <Button disabled={isLoading} type="submit" onClick={submit}>
               {isLoading ? "Converting..." : "Convert"}
             </Button>
+            <SegmentToggle
+              options={[
+                { label: "File", value: "file" },
+                { label: "Clipboard", value: "clipboard" },
+              ]}
+              value={mode}
+              onChange={(val)=>setMode(val)}
+            />
+          </div>
+          
+          <div className="flex flex-col space-y-2">
+            <Label htmlFor="download-path">Download Path</Label>
+            <Input
+              id="download-path"
+              placeholder="downloads"
+              value={downloadFilePath}
+              onChange={(e) => setDownloadFilePath(e.target.value)}
+            />
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Folder/path where the downloaded file (or zip) will be placed.<br/>
+              (Currently this is just stored for reference in localStorage.)
+            </p>
           </div>
           
           <div className="space-y-2 flex flex-col gap-4">
