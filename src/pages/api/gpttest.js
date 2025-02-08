@@ -75,35 +75,6 @@ This is opening up new doors for us, possibly even a marketplace for paid multip
 ### Subscribe to Playroom Updates
 
 What's latest on Playroom Games`;
-const instructions = `
-Remove all links that wrap the img tags:
-
-[
-
-![img]()
-
-](some link)
-
-remove all these please BOTH brackets and the link inside
-
-BUT keep the image embeds!
-
-Add the following header (replace curly with actual data):
-\`\`\`
----
-title: "{TITLE_HERE}"
-image: "{LINK_TO_FIRST_IMAGE_FROM_ARTICLE}"
----
-
-import AuthorBio from "../../components/AuthorBio";
-
-# {TITLE_HERE}
-
-<AuthorBio author="tabish" date="Feb 01, 2024" />
-
-\`\`\`
-`
-
 const instructions2 = `
 Add the following header (replace curly with actual data):
 \`\`\`
@@ -122,7 +93,8 @@ import AuthorBio from "../../components/AuthorBio";
 `
 
 export default async function handler(req, res) {
-  const out = await runGPT(gptModel, markdown, instructions2);
+  // We pass null or "ignored" for the model since runGPT itself is
+  // pinned to "gemini-2.0-flash" in our updated _gpt.js
+  const out = await runGPT(null, markdown, instructions2);
   res.status(200).json(out);
-  // res.status(200).send(out.content);
 }

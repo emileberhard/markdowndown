@@ -8,7 +8,16 @@ import archiver from "archiver";
 
 export default async function handler(req, res) {
   // get params from body
-  let { url, downloadImages, imagesDir, imagesBasePathOverride, removeNonContent, applyGpt, bigModel } = req.body;
+  let {
+    url,
+    downloadImages,
+    imagesDir,
+    imagesBasePathOverride,
+    removeNonContent,
+    applyGpt,
+    bigModel,
+    geminiRawHtmlMode
+  } = req.body;
   // let { url, downloadImages, imagesDir, imagesBasePathOverride, removeNonContent } = req.query;
   if (!url) {
     res.status(400).send("Missing url parameter");
@@ -31,7 +40,17 @@ export default async function handler(req, res) {
     console.log(e)
   }
   console.log("f", folder)
-  const md = await fetchCleanMarkdownFromUrl(url, `${folder}/index.md`, downloadImages === true, imagesDir || "images", imagesBasePathOverride, removeNonContent === true, applyGpt, bigModel === true);
+  const md = await fetchCleanMarkdownFromUrl(
+    url,
+    `${folder}/index.md`,
+    downloadImages === true,
+    imagesDir || "images",
+    imagesBasePathOverride,
+    removeNonContent === true,
+    applyGpt,
+    bigModel === true,
+    geminiRawHtmlMode === true
+  );
   if (downloadImages === true){
     // Set the headers to indicate a file download
   res.setHeader('Content-Type', 'application/zip');

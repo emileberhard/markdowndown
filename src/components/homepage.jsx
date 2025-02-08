@@ -75,6 +75,7 @@ function HelpTooltip({children}){
 export function Homepage() {
   const { toast } = useToast()
   const [url, setUrl] = useState("");
+  const [geminiRawHtmlMode, setGeminiRawHtmlMode] = useState(false);
   const [imagesDir, setImagesDir] = useState("images");
   const [downloadImages, setDownloadImages] = useState(false);
   const [removeNonContent, setRemoveNonContent] = useState(true);
@@ -94,7 +95,8 @@ export function Homepage() {
       imagesBasePathOverride,
       removeNonContent,
       applyGpt,
-      bigModel
+      bigModel,
+      geminiRawHtmlMode
     }
     localStorage.setItem("settings", JSON.stringify(settings))
   }
@@ -112,10 +114,12 @@ export function Homepage() {
       setImagesDir(parsed.imagesDir)
       setDownloadImages(!!parsed.downloadImages)
       SetImagesBasePathOverride(parsed.imagesBasePathOverride)
+      setGeminiRawHtmlMode(!!parsed.geminiRawHtmlMode)
     }
   }, [])
 
-  async function submit(){
+  async function submit(e){
+    e.preventDefault()
     if (isLoading){
       return;
     }
@@ -133,7 +137,8 @@ export function Homepage() {
       imagesBasePathOverride,
       removeNonContent,
       applyGpt,
-      bigModel
+      bigModel,
+      geminiRawHtmlMode
     }
 
     track("Convert Clicked", payload)
@@ -246,7 +251,7 @@ export function Homepage() {
               <Label className="text-sm leading-none ml-2" htmlFor="apply-gpt">
                 Apply GPT Filter on Markdown
                 <HelpTooltip>
-                  Apply custom instructions to further clean up or transform the markdown content using GPT-3.5
+                  Apply custom instructions to further clean up or transform the markdown content using Gemini Flash 2.0
                 </HelpTooltip>
               </Label>
             </div>
@@ -313,6 +318,23 @@ export function Homepage() {
           </div>
           
         </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Gemini 2.0 Raw HTML Mode</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                checked={geminiRawHtmlMode}
+                onCheckedChange={(val) => setGeminiRawHtmlMode(val)}
+                id="gemini-raw-html-mode"
+              />
+              <label className="text-sm leading-none" htmlFor="gemini-raw-html-mode">
+                Use Gemini 2.0 to parse raw HTML into Markdown
+              </label>
+            </div>
+          </CardContent>
+        </Card>
         <footer className="mt-10 text-xs text-gray-500 dark:text-gray-400">
           <p>
           © {new Date().getFullYear()}&nbsp;

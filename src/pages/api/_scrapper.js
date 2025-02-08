@@ -8,14 +8,24 @@ import { runGPT } from './_gpt';
 import Showdown from 'showdown';
 import puppeteer from 'puppeteer';
 import { wrapInStyledHtml } from './_htmlwrap';
-const gptModel = 'gpt-3.5-turbo-0125';
-const gptModelBig = 'gpt-4-turbo-2024-04-09'
+import { GoogleGenerativeAI } from '@google/generative-ai'
+import { rawHtmlGeminiSchema } from '@/lib/geminiSchema'
 const browserFetchUrl = process.env.HTMLFETCH_API?`${process.env.HTMLFETCH_API}/?url=`:undefined;
 const browserWSEndpoint = process.env.BROWSERLESS_KEY? `https://chrome.browserless.io?token=${process.env.BROWSERLESS_KEY}`:undefined;
 
 // Define the function using ES6 arrow function syntax
 let browser;
-const fetchCleanMarkdownFromUrl = async (url, filePath, fetchImages = false, imgDirName = "images", imagesBasePathOverride = undefined, removeNonContent = true, applyGpt="", bigModel = false) => {
+const fetchCleanMarkdownFromUrl = async (
+  url,
+  filePath,
+  fetchImages = false,
+  imgDirName = "images",
+  imagesBasePathOverride = undefined,
+  removeNonContent = true,
+  applyGpt = "",
+  bigModel = false,
+  geminiRawHtmlMode = false
+) => {
   try {
     let data;
     if (browserFetchUrl){
@@ -49,8 +59,41 @@ const fetchCleanMarkdownFromUrl = async (url, filePath, fetchImages = false, img
       browser = null;
     }
     
+    if (geminiRawHtmlMode) {
+      console.log("Running Gemini 2.0 raw HTML -> Markdown mode...");
+      const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "MISSING_KEY");
+      const model = genAI.getGenerativeModel({
+        model: "gemini-2.0-flash",
+        systemInstruction: "You are a HTML to markdown formatter. You take raw HTML from a web page and output beautifully formatted markdown articles. The markdown content should be the exact same content as the article or website text, but beautifully formatted with markdown.",
+      });
 
-    
+      const generationConfig = {
+        responseMimeType: "application/json",
+        responseSchema: rawHtmlGeminiSchema,
+        temperature: 0.5,
+        topP: 0.95,
+        topK: 40,
+        maxOutputTokens: 8192
+      };
+
+      const chat = model.startChat({ generationConfig });
+      const response = await chat.sendMessage(data);
+
+      const textOutput = response.response.text();
+      let parsed;
+      try {
+        parsed = JSON.parse(textOutput);
+      } catch (err) {
+        console.error("Gemini 2.0 raw HTML mode: Could not parse JSON from model:", textOutput);
+        throw err;
+      }
+
+      const theMarkdown = parsed.markdown_body || "";
+      fs.writeFileSync(filePath, theMarkdown, "utf8");
+
+      return theMarkdown;
+    }
+
     // Use JSDOM to parse the HTML content
     const doc = new JSDOM(data, { url });
 
@@ -74,11 +117,11 @@ const fetchCleanMarkdownFromUrl = async (url, filePath, fetchImages = false, img
     if (applyGpt){
       const curMarkdown = fs.readFileSync(filePath, "utf8");
       console.log("Applying GPT...");
-      const instructions = applyGpt
-      const gptResponse = await runGPT(bigModel?gptModelBig:gptModel, curMarkdown, instructions);
+      const instructions = applyGpt;
+      // We can pass null for model; "gemini-2.0-flash" is used in runGPT by default
+      const gptResponse = await runGPT(null, curMarkdown, instructions);
       markdown = gptResponse.content || markdown;
       fs.writeFileSync(filePath, markdown, 'utf8');
-      // fs.writeFileSync(filePath.replace(".md", ".gpt.json"), JSON.stringify(gptResponse.changes), 'utf8');
     }
 
     // also save the markdown to html
