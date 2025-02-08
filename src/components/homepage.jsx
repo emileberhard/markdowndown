@@ -23,6 +23,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { SegmentToggle } from "@/components/ui/segment-toggle"
+import { Save } from "lucide-react"
 
 function getLastPartOfUrl(url) {
   url = url.replace(/(\?.*)|(#.*)|\/$/, "")
@@ -235,6 +236,58 @@ export function Homepage() {
     }
   }
 
+  async function handleSaveAs() {
+    // Only works if you have some markdown (e.g. from "clipboard" mode).
+    if (!convertedMd) {
+      toast({
+        title: "Nothing to save",
+        description: "Convert in 'Clipboard' mode first, so there's text to save."
+      });
+      return;
+    }
+
+    // Try the File System Access API (Chrome/Edge).
+    if ("showSaveFilePicker" in window) {
+      try {
+        const opts = {
+          suggestedName: "my-converted.md",
+          types: [
+            {
+              description: "Markdown file",
+              accept: { "text/markdown": [".md"] }
+            }
+          ]
+        }
+        const fileHandle = await window.showSaveFilePicker(opts);
+        const writable = await fileHandle.createWritable();
+        await writable.write(convertedMd);
+        await writable.close();
+        toast({
+          title: "File saved!",
+          description: "Your Markdown has been saved to the chosen location."
+        });
+      } catch (err) {
+        console.error("Error saving file:", err);
+        // If user cancels, do nothing. Otherwise show error.
+        if (err.name !== "AbortError") {
+          toast({
+            title: "Save error",
+            description: err.message || "Failed to save file."
+          });
+        }
+      }
+    } else {
+      // Fallback for non-supporting browsers
+      const blob = new Blob([convertedMd], { type: "text/markdown" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "my-converted.md";
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+  }
+
   return (
     <main className="w-full min-h-[100vh] py-6 space-y-6 flex justify-center items-center">
       <Toaster />
@@ -252,7 +305,7 @@ export function Homepage() {
           </p>
         </div>
 
-        <div className="w-full max-w-xl space-y-4">
+        <div className="w-full max-w-3xl space-y-4">
           <div className="flex w-full max-w-xl items-center gap-2">
             {/* URL input + Paste */}
             <div className="flex items-center gap-2 flex-1">
@@ -321,6 +374,17 @@ export function Homepage() {
             {convertedMd && mode === "clipboard" && (
               <Button variant="outline" onClick={() => copyToClipboard(convertedMd)}>
                 Copy to Clipboard
+              </Button>
+            )}
+            {/* "Save As..." icon-only button */}
+            {convertedMd && mode === "clipboard" && (
+              <Button 
+                variant="outline" 
+                size="icon" 
+                onClick={handleSaveAs}
+                className="h-10 w-10"
+              >
+                <Save className="h-4 w-4" />
               </Button>
             )}
           </div>
