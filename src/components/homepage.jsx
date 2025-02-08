@@ -243,8 +243,8 @@ export function Homepage() {
             Convert any webpage to a clean markdown<br/> w/ images downloaded.
           </p>
         </div>
-        <div className="w-full max-w-sm space-y-4">
-          <div className="flex w-full max-w-sm items-center space-x-2">
+        <div className="w-full max-w-xl space-y-4">
+          <div className="flex w-full max-w-xl items-center space-x-2">
             <Input
               value={url}
               type="text"
@@ -256,6 +256,26 @@ export function Homepage() {
                 }
               }}
             />
+            <Button 
+              variant="outline" 
+              onClick={async () => {
+                try {
+                  const text = await navigator.clipboard.readText()
+                  setUrl(text)
+                  toast({
+                    title: "URL Pasted",
+                    description: "URL has been pasted from clipboard"
+                  })
+                } catch (err) {
+                  toast({
+                    title: "Paste Failed",
+                    description: "Could not access clipboard"
+                  })
+                }
+              }}
+            >
+              Paste
+            </Button>
             <Button disabled={isLoading} type="submit" onClick={submit}>
               {isLoading ? "Converting..." : "Convert"}
             </Button>
@@ -289,130 +309,148 @@ export function Homepage() {
                 <CardTitle>Options</CardTitle>
               </CardHeader>
               <CardContent>
-              <div className="flex items-center space-x-2">
-              <Checkbox id="remove-noncontent" checked={removeNonContent} onClick={t=>setRemoveNonContent(!removeNonContent)} />
-              <label className="text-sm leading-none" htmlFor="remove-noncontent">
-                Remove non-content elements 
-                <HelpTooltip>
-                  Removes non-content elements like headers, footers, ads etc.
-                </HelpTooltip>
-              </label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Checkbox id="remove-images" checked={downloadImages} onClick={t=>setDownloadImages(!downloadImages)} />
-              <label className="text-sm leading-none" htmlFor="remove-images">
-                Download images locally and link them
-                <HelpTooltip>
-                  Instead of linking to remote images, download them locally and link them in the markdown.<br/>
-                  Gives you a zip file with markdown and images folder.
-                </HelpTooltip>
-              </label>
-            </div>
-            <div className="flex items-center space-x-2">
-            <Checkbox id="apply-gpt" checked={gptEnabled} onClick={t=>{
-              const newValue = !gptEnabled;
-              if (!newValue){
-                setApplyGpt("")
-              }
-              setGptEnabled(newValue);
-              }} />
-              <Label className="text-sm leading-none ml-2" htmlFor="apply-gpt">
-                Apply GPT Filter on Markdown
-                <HelpTooltip>
-                  Apply custom instructions to further clean up or transform the markdown content using Gemini Flash 2.0
-                </HelpTooltip>
-              </Label>
-            </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="remove-noncontent"
+                    checked={removeNonContent}
+                    onClick={() => setRemoveNonContent(!removeNonContent)}
+                  />
+                  <label className="text-sm leading-none" htmlFor="remove-noncontent">
+                    Remove non-content elements 
+                    <HelpTooltip>
+                      Removes non-content elements like headers, footers, ads etc.
+                    </HelpTooltip>
+                  </label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="remove-images"
+                    checked={downloadImages}
+                    onClick={() => setDownloadImages(!downloadImages)}
+                  />
+                  <label className="text-sm leading-none" htmlFor="remove-images">
+                    Download images locally and link them
+                    <HelpTooltip>
+                      Instead of linking to remote images, download them locally and link them in the markdown.<br/>
+                      Gives you a zip file with markdown and images folder.
+                    </HelpTooltip>
+                  </label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="apply-gpt"
+                    checked={gptEnabled}
+                    onClick={() => {
+                      const newValue = !gptEnabled;
+                      if (!newValue){
+                        setApplyGpt("")
+                      }
+                      setGptEnabled(newValue);
+                    }}
+                  />
+                  <Label className="text-sm leading-none" htmlFor="apply-gpt">
+                    Apply GPT Filter on Markdown
+                    <HelpTooltip>
+                      Apply custom instructions to further clean up or transform the markdown content using Gemini Flash 2.0
+                    </HelpTooltip>
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="gemini-raw-html-mode"
+                    checked={geminiRawHtmlMode}
+                    onClick={() => setGeminiRawHtmlMode(!geminiRawHtmlMode)}
+                  />
+                  <label className="text-sm leading-none" htmlFor="gemini-raw-html-mode">
+                    Use Gemini 2.0 to parse raw HTML into Markdown
+                  </label>
+                </div>
               </CardContent>
             </Card>
-            
+
             {downloadImages && (
               <Card>
-              <CardHeader>
-                <CardTitle>Image Options</CardTitle>
-              </CardHeader>
-              <CardContent>
-              <>
-              <div className="space-y-2">
-              <Label className="text-sm leading-none" htmlFor="images-folder">
-                Override Images Folder Name
-                <HelpTooltip>
-                  Override the default folder name for images (Only used when downloading images)
-                </HelpTooltip>
-              </Label>
-              <Input id="images-folder" placeholder="Enter folder name" type="text" value={imagesDir} onChange={val=>{
-                setImagesDir(val.target.value)
-              }} />
-              
-            </div>
-            <div className="space-y-2">
-              <Label className="text-sm leading-none" htmlFor="images-basepath">
-                Override base path for images in markdown
-                <HelpTooltip>
-                  Override the base path for linked images in markdown (Only used when downloading images)
-                </HelpTooltip>
-              </Label>
-              <Input id="images-basepath" placeholder={`./${imagesDir}`} type="text" value={imagesBasePathOverride} onChange={val=>{
-                SetImagesBasePathOverride(val.target.value)
-              }} />
-              </div>
-              </>
-              </CardContent>
-            </Card>
+                <CardHeader>
+                  <CardTitle>Image Options</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    <Label className="text-sm leading-none" htmlFor="images-folder">
+                      Override Images Folder Name
+                      <HelpTooltip>
+                        Override the default folder name for images (Only used when downloading images)
+                      </HelpTooltip>
+                    </Label>
+                    <Input
+                      id="images-folder"
+                      placeholder="Enter folder name"
+                      type="text"
+                      value={imagesDir}
+                      onChange={(val) => setImagesDir(val.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2 mt-4">
+                    <Label className="text-sm leading-none" htmlFor="images-basepath">
+                      Override base path for images in markdown
+                      <HelpTooltip>
+                        Override the base path for linked images in markdown (Only used when downloading images)
+                      </HelpTooltip>
+                    </Label>
+                    <Input
+                      id="images-basepath"
+                      placeholder={`./${imagesDir}`}
+                      type="text"
+                      value={imagesBasePathOverride}
+                      onChange={(val) => SetImagesBasePathOverride(val.target.value)}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
             )}
- {gptEnabled && <Card>
-              <CardHeader>
-                <CardTitle>GPT Options</CardTitle>
-              </CardHeader>
-              <CardContent>
-            <div className="space-y-2">
-            
-              
-                <div className="flex items-center space-x-2">
-                <Checkbox id="big-model" checked={bigModel} onClick={t=>setBigModel(!bigModel)} />
-                <label className="text-sm leading-none" htmlFor="big-model">
-                  Use GPT4 (takes longer)
-                </label>
-              </div>
-              <Textarea id="apply-gpt-txt" 
-              className="min-h-[20rem]"
-              placeholder={`Instructions for GPT like:\n\n'Add a tldr section at the top'\n'Remove all links'\n'Change all subheadings to h3'`} value={applyGpt} onChange={val=>{ 
-                setApplyGpt(val.target.value)
-              }} />
-            </div>
-            </CardContent>
-            </Card>}
-            
+
+            {gptEnabled && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>GPT Options</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center space-x-2 mb-3">
+                    <Checkbox
+                      id="big-model"
+                      checked={bigModel}
+                      onClick={() => setBigModel(!bigModel)}
+                    />
+                    <label className="text-sm leading-none" htmlFor="big-model">
+                      Use GPT4 (takes longer)
+                    </label>
+                  </div>
+                  <Textarea
+                    id="apply-gpt-txt"
+                    className="min-h-[10rem]"
+                    placeholder={`Instructions for GPT like:\n\n'Add a tldr section at the top'\n'Remove all links'\n'Change all subheadings to h3'`}
+                    value={applyGpt}
+                    onChange={(val) => setApplyGpt(val.target.value)}
+                  />
+                </CardContent>
+              </Card>
+            )}
           </div>
-          
         </div>
-        <Card>
-          <CardHeader>
-            <CardTitle>Gemini 2.0 Raw HTML Mode</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                checked={geminiRawHtmlMode}
-                onCheckedChange={(val) => setGeminiRawHtmlMode(val)}
-                id="gemini-raw-html-mode"
-              />
-              <label className="text-sm leading-none" htmlFor="gemini-raw-html-mode">
-                Use Gemini 2.0 to parse raw HTML into Markdown
-              </label>
-            </div>
-          </CardContent>
-        </Card>
+
         <footer className="mt-10 text-xs text-gray-500 dark:text-gray-400">
           <p>
-          © {new Date().getFullYear()}&nbsp;
-            <a className="underline" href="https://twitter.com/_asadmemon" target="_blank" rel="noopener noreferrer">
+            © {new Date().getFullYear()}&nbsp;
+            <a
+              className="underline"
+              href="https://twitter.com/_asadmemon"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
               Asad Memon
             </a>
           </p>
         </footer>
       </div>
-      
     </main>)
   );
 }
