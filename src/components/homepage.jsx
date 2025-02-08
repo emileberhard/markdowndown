@@ -233,52 +233,56 @@ export function Homepage() {
     }
   }
   return (
-    (<main className="w-full min-h-[100vh] py-6 space-y-6 flex justify-center items-center">
+    <main className="w-full min-h-[100vh] py-6 space-y-6 flex justify-center items-center">
       <Toaster />
       <div className="container flex flex-col items-center justify-center">
         <div className="space-y-2 text-center mb-10">
-          <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl">📥<br/>Markdown<b>Down</b></h1>
-          <p
-            className="max-w-[600px] text-gray-500 md:text-xl/relaxed dark:text-gray-400">
+          <h1 className="text-3xl font-bold tracking-tighter sm:text-4xl">
+            📥<br/>Markdown<b>Down</b>
+          </h1>
+          <p className="max-w-[600px] text-gray-500 md:text-xl/relaxed dark:text-gray-400">
             Convert any webpage to a clean markdown<br/> w/ images downloaded.
           </p>
         </div>
+
         <div className="w-full max-w-xl space-y-4">
-          <div className="flex w-full max-w-xl items-center space-x-2">
-            <Input
-              value={url}
-              type="text"
-              placeholder="URL"
-              onChange={(val)=>setUrl(val.target.value)}
-              onKeyDown={(e)=>{
-                if (e.key === "Enter"){
-                  submit()
-                }
-              }}
-            />
-            <Button 
-              variant="outline" 
-              onClick={async () => {
-                try {
-                  const text = await navigator.clipboard.readText()
-                  setUrl(text)
-                  toast({
-                    title: "URL Pasted",
-                    description: "URL has been pasted from clipboard"
-                  })
-                } catch (err) {
-                  toast({
-                    title: "Paste Failed",
-                    description: "Could not access clipboard"
-                  })
-                }
-              }}
-            >
-              Paste
-            </Button>
-            <Button disabled={isLoading} type="submit" onClick={submit}>
-              {isLoading ? "Converting..." : "Convert"}
-            </Button>
+          <div className="flex w-full max-w-xl items-center gap-2">
+            {/* Left side: Input + Paste */}
+            <div className="flex items-center gap-2 flex-1">
+              <Input
+                value={url}
+                type="text"
+                placeholder="URL"
+                onChange={(val)=>setUrl(val.target.value)}
+                onKeyDown={(e)=>{
+                  if (e.key === "Enter"){
+                    submit()
+                  }
+                }}
+              />
+              <Button
+                variant="outline"
+                onClick={async () => {
+                  try {
+                    const text = await navigator.clipboard.readText()
+                    setUrl(text)
+                    toast({
+                      title: "URL Pasted",
+                      description: "URL has been pasted from clipboard"
+                    })
+                  } catch (err) {
+                    toast({
+                      title: "Paste Failed",
+                      description: "Could not access clipboard"
+                    })
+                  }
+                }}
+              >
+                Paste
+              </Button>
+            </div>
+
+            {/* Middle: Segment Toggle */}
             <SegmentToggle
               options={[
                 { label: "File", value: "file" },
@@ -287,6 +291,15 @@ export function Homepage() {
               value={mode}
               onChange={(val)=>setMode(val)}
             />
+
+            {/* Right: Convert button (primary style) */}
+            <Button
+              disabled={isLoading}
+              className="px-5 bg-indigo-600 text-white hover:bg-indigo-700 dark:bg-indigo-400 dark:hover:bg-indigo-500 border-2 border-indigo-300 dark:border-indigo-300 shadow-sm"
+              onClick={submit}
+            >
+              {isLoading ? "Converting..." : "Convert"}
+            </Button>
           </div>
           
           <div className="flex flex-col space-y-2">
@@ -451,6 +464,5 @@ export function Homepage() {
           </p>
         </footer>
       </div>
-    </main>)
-  );
+    </main>);
 }
