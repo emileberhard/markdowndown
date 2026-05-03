@@ -5,7 +5,7 @@
 #    - Builds the Next.js app (and downloads Chromium via Puppeteer)
 # ─────────────────────────────────────────────────────────────
 
-FROM node:18-bullseye-slim AS builder
+FROM oven/bun:1.3.10 AS builder
 
 # Skip Puppeteer's Chromium download since we'll use the system's arm64 version
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
@@ -42,10 +42,10 @@ ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 WORKDIR /app
 
 # Copy package files first for caching
-COPY package.json package-lock.json* yarn.lock* ./
+COPY package.json bun.lock ./
 
 # Install dependencies
-RUN npm install
+RUN bun install --frozen-lockfile
 
 # Copy the entire project
 COPY . .
@@ -54,7 +54,7 @@ COPY . .
 RUN if [ -f postcss.config.js ]; then mv postcss.config.js postcss.config.cjs; fi
 
 # Build the Next.js project
-RUN npm run build
+RUN bun run build
 
 # ─────────────────────────────────────────────────────────────
 # 2) RUNTIME STAGE
@@ -62,7 +62,7 @@ RUN npm run build
 #    - Sets up necessary system libraries
 # ─────────────────────────────────────────────────────────────
 
-FROM node:18-bullseye-slim AS runner
+FROM oven/bun:1.3.10 AS runner
 
 # Skip Puppeteer's Chromium download
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
@@ -101,6 +101,7 @@ WORKDIR /app
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/bun.lock ./bun.lock
 
 # Copy environment variables
 COPY .env ./.env
@@ -112,4 +113,4 @@ COPY .env ./.env
 EXPOSE 3000
 
 # Start the Next.js app in production mode
-CMD ["npm", "start"]
+CMD ["bun", "run", "start"]

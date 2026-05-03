@@ -21,8 +21,8 @@ See it in action at [markdowndown.vercel.app](https://markdowndown.vercel.app/).
 If you want to run this locally, you can clone the repository and run the following commands:
 
 ```bash
-npm install
-npm run dev
+bun install
+bun run dev
 ```
 
 By default, this will spawn and use a local puppeteer instance to convert the webpage to markdown. 
